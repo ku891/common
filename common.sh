@@ -269,6 +269,7 @@ fi
 }
 
 
+
 function Diy_update() {
 bash <(curl -fsSL https://raw.githubusercontent.com/ku891/common/main/custom/ubuntu.sh)
 if [[ $? -ne 0 ]];then
@@ -479,6 +480,177 @@ cat >> "${KEEPD_PATH}" <<-EOF
 /etc/smartdns/custom.conf
 EOF
 }
+
+function Diy_Wenjian() {
+cp -Rf ${HOME_PATH}/LICENSES/doc/uniq.conf ${HOME_PATH}/feeds.conf.default
+
+# 增加中文语言包
+if [[ -f "${HOME_PATH}/feeds/luci/modules/luci-mod-system/root/usr/share/luci/menu.d/luci-mod-system.json" ]]; then
+  LUCI_BANBEN="2"
+  echo "LUCI_BANBEN=${LUCI_BANBEN}" >> $GITHUB_ENV
+else
+  LUCI_BANBEN="1"
+  echo "LUCI_BANBEN=${LUCI_BANBEN}" >> $GITHUB_ENV
+fi
+
+Settings_path="$(find "${HOME_PATH}/package" -type d -name "default-settings")"
+if [[ -z "${Settings_path}" ]] && [[ "${LUCI_BANBEN}" == "2" ]]; then
+  cp -Rf ${HOME_PATH}/build/common/Share/default-settings2 ${HOME_PATH}/package/default-settings
+  [[ ! -d "${HOME_PATH}/feeds/luci/libs/luci-lib-base" ]] && sed -i "s/+luci-lib-base //g" ${HOME_PATH}/package/default-settings/Makefile
+elif [[ -z "${Settings_path}" ]] && [[ "${LUCI_BANBEN}" == "1" ]]; then
+  cp -Rf ${HOME_PATH}/build/common/Share/default-settings1 ${HOME_PATH}/package/default-settings
+fi
+
+ZZZ_PATH="$(find "${HOME_PATH}/package" -type f -name "*-default-settings" |grep files)"
+if [[ -n "${ZZZ_PATH}" ]]; then  
+  echo "ZZZ_PATH=${ZZZ_PATH}" >> ${GITHUB_ENV}
+  sed -i '/exit 0$/d' "${ZZZ_PATH}"
+
+  if [[ -f "${HOME_PATH}/LICENSES/doc/default-settings" ]]; then
+    cp -Rf ${HOME_PATH}/LICENSES/doc/default-settings "${ZZZ_PATH}"
+  else
+    cp -Rf "${ZZZ_PATH}" ${HOME_PATH}/LICENSES/doc/default-settings
+  fi
+
+  if [[ -f "${HOME_PATH}/LICENSES/doc/config_generates" ]]; then
+    cp -Rf ${HOME_PATH}/LICENSES/doc/config_generates "${GENE_PATH}"
+  else
+    cp -Rf "${GENE_PATH}" ${HOME_PATH}/LICENSES/doc/config_generates
+  fi
+  sed -i "s?main.lang=.*?main.lang='zh_cn'?g" "${ZZZ_PATH}"
+  [[ -n "$(grep "openwrt_banner" "${ZZZ_PATH}")" ]] && sed -i '/openwrt_banner/d' "${ZZZ_PATH}"
+
+cat >> "${ZZZ_PATH}" <<-EOF
+sed -i '/DISTRIB_DESCRIPTION/d' /etc/openwrt_release
+echo "DISTRIB_DESCRIPTION='OpenWrt '" >> /etc/openwrt_release
+sed -i '/luciversion/d' /usr/lib/lua/luci/version.lua
+echo "luciversion    = \"${LUCI_EDITION}\"" >> /usr/lib/lua/luci/version.lua
+sed -i '/luciname/d' /usr/lib/lua/luci/version.lua
+echo "luciname    = \"${SOURCE}\"" >> /usr/lib/lua/luci/version.lua
+EOF
+fi
+
+# 增加一些应用
+cp -Rf ${HOME_PATH}/build/common/custom/default-setting "${DEFAULT_PATH}"
+sudo chmod +x "${DEFAULT_PATH}"
+sed -i '/exit 0$/d' "${DEFAULT_PATH}"
+sed -i "s?112233?${SOURCE} - ${LUCI_EDITION}?g" "${DEFAULT_PATH}" > /dev/null 2>&1
+sed -i 's/root:.*/root::0:0:99999:7:::/g' ${FILES_PATH}/etc/shadow
+if [[ `grep -Eoc "admin:.*" ${FILES_PATH}/etc/shadow` -eq '1' ]]; then
+  sed -i 's/admin:.*/admin::0:0:99999:7:::/g' ${FILES_PATH}/etc/shadow
+fi
+
+cp -Rf ${HOME_PATH}/build/common/custom/Postapplication "${FILES_PATH}/etc/init.d/Postapplication"
+sudo chmod +x "${FILES_PATH}/etc/init.d/Postapplication"
+
+cp -Rf ${HOME_PATH}/build/common/custom/networkdetection "${FILES_PATH}/etc/networkdetection"
+sudo chmod +x "${FILES_PATH}/etc/networkdetection"
+
+[[ ! -d "${FILES_PATH}/usr/bin" ]] && mkdir -p ${FILES_PATH}/usr/bin
+cp -Rf ${HOME_PATH}/build/common/custom/openwrt.sh "${FILES_PATH}/usr/bin/openwrt"
+sudo chmod +x "${FILES_PATH}/usr/bin/openwrt"
+
+[[ ! -d "${FILES_PATH}/usr/bin" ]] && mkdir -p ${FILES_PATH}/usr/bin
+cp -Rf ${HOME_PATH}/build/common/custom/tools.sh "${FILES_PATH}/usr/bin/tools"
+sudo chmod +x "${FILES_PATH}/usr/bin/tools"
+
+[[ ! -d "${FILES_PATH}/usr/bin" ]] && mkdir -p ${FILES_PATH}/usr/bin
+cp -Rf ${HOME_PATH}/build/common/custom/qinglong.sh "${FILES_PATH}/usr/bin/qinglong"
+sudo chmod +x "${FILES_PATH}/usr/bin/qinglong"
+
+echo '#!/bin/bash' > "${DELETE}"
+sudo chmod +x "${DELETE}"
+
+if [[ -d "${HOME_PATH}/target/linux/armsr" ]]; then
+  features_file="${HOME_PATH}/target/linux/armsr/Makefile"
+elif [[ -d "${HOME_PATH}/target/linux/armvirt" ]]; then
+  features_file="${HOME_PATH}/target/linux/armvirt/Makefile"
+fi
+[[ -n "${features_file}" ]] && sed -i "s?FEATURES+=.*?FEATURES+=targz?g" "${features_file}"
+sed -i '/DISTRIB_SOURCECODE/d' "${REPAIR_PATH}"
+echo -e "\nDISTRIB_SOURCECODE='${SOURCE}_${LUCI_EDITION}'" >> "${REPAIR_PATH}" && sed -i '/^\s*$/d' "${REPAIR_PATH}"
+
+# 给固件保留配置更新固件的保留项目
+if [[ -z "$(grep "background" ${KEEPD_PATH})" ]]; then
+cat >>"${KEEPD_PATH}" <<-EOF
+/etc/config/AdGuardHome.yaml
+/www/luci-static/argon/background/
+/etc/smartdns/custom.conf
+EOF
+fi
+
+# 修改一些依赖
+case "${SOURCE_CODE}" in
+XWRT|OFFICIAL)
+  if [[ -n "$(grep "libustream-wolfssl" ${HOME_PATH}/include/target.mk)" ]]; then
+    sed -i 's?libustream-wolfssl?libustream-openssl?g' "${HOME_PATH}/include/target.mk"
+  elif [[ -z "$(grep "libustream-openssl" ${HOME_PATH}/include/target.mk)" ]]; then
+    sed -i 's?DEFAULT_PACKAGES:=?DEFAULT_PACKAGES:=libustream-openssl ?g' "${HOME_PATH}/include/target.mk"
+  fi
+
+  if [[ -n "$(grep "dnsmasq" ${HOME_PATH}/include/target.mk)" ]] && [[ -z "$(grep "dnsmasq-full" ${HOME_PATH}/include/target.mk)" ]]; then
+    sed -i 's?dnsmasq?dnsmasq-full luci luci-newapi luci-lib-fs?g' "${HOME_PATH}/include/target.mk"
+  fi
+
+  if [[ -z "$(grep "ca-bundle" ${HOME_PATH}/include/target.mk)" ]]; then
+    sed -i 's?DEFAULT_PACKAGES:=?DEFAULT_PACKAGES:=ca-bundle ?g' "${HOME_PATH}/include/target.mk"
+  fi
+
+  if [[ -z "$(grep "luci" ${HOME_PATH}/include/target.mk)" ]]; then
+    sed -i 's?DEFAULT_PACKAGES:=?DEFAULT_PACKAGES:=luci luci-newapi luci-lib-fs ?g' "${HOME_PATH}/include/target.mk"
+  fi
+;;
+*)
+  if [[ -d "${HOME_PATH}/package/emortal" ]]; then
+    if [[ -z "$(grep "default-settings-chn" ${HOME_PATH}/include/target.mk)" ]]; then
+      sed -i 's?DEFAULT_PACKAGES:=?DEFAULT_PACKAGES:=default-settings-chn ?g' "${HOME_PATH}/include/target.mk"
+    fi
+  else
+    if [[ -z "$(grep "default-settings" ${HOME_PATH}/include/target.mk)" ]]; then
+      sed -i 's?DEFAULT_PACKAGES:=?DEFAULT_PACKAGES:=default-settings ?g' "${HOME_PATH}/include/target.mk"
+    fi
+  fi
+;;
+esac
+
+source ${HOME_PATH}/build/common/Share/19.07/netsupport.sh
+
+[[ -d "${HOME_PATH}/build/common/Share/luci-app-samba4" ]] && rm -rf ${HOME_PATH}/build/common/Share/luci-app-samba4
+amba4="$(find . -type d -name 'luci-app-samba4')"
+autosam="$(find . -type d -name 'autosamba')"
+if [[ -z "${amba4}" ]] && [[ -n "${autosam}" ]]; then
+  for X in "$(find . -type d -name 'autosamba')/Makefile"; do sed -i "s?+luci-app-samba4?+luci-app-samba?g" "$X"; done
+else
+  for X in "$(find . -type d -name 'autosamba')/Makefile"; do
+    if [[ `grep -c "+luci-app-samba4" $X` -eq '0' ]]; then
+      sed -i "s?+luci-app-samba?+luci-app-samba4?g" "$X"
+    fi
+  done
+fi
+
+# files大法，设置固件无烦恼
+if [ -n "$(ls -A "${BUILD_PATH}/patches" 2>/dev/null)" ]; then
+  find "${BUILD_PATH}/patches" -type f -name '*.patch' -print0 | sort -z | xargs -I % -t -0 -n 1 sh -c "cat '%'  | patch -d './' -p1 --forward --no-backup-if-mismatch"
+fi
+if [ -n "$(ls -A "${BUILD_PATH}/diy" 2>/dev/null)" ]; then
+  cp -Rf ${BUILD_PATH}/diy/* ${HOME_PATH}
+fi
+if [ -n "$(ls -A "${BUILD_PATH}/files" 2>/dev/null)" ]; then
+  [[ -d "${HOME_PATH}/files" ]] && rm -rf ${HOME_PATH}/files
+  cp -Rf ${BUILD_PATH}/files ${HOME_PATH}/files
+fi
+
+# 定时更新固件的插件包
+if [[ "${UPDATE_FIRMWARE_ONLINE}" == "true" ]]; then
+  source ${BUILD_PATH}/upgrade.sh && Diy_Part1
+else
+  find . -type d -name "luci-app-autoupdate" |xargs -i rm -rf {}
+  if [[ -n "$(grep "luci-app-autoupdate" ${HOME_PATH}/include/target.mk)" ]]; then
+    sed -i 's?luci-app-autoupdate??g' ${HOME_PATH}/include/target.mk
+  fi
+fi
+}
+
 
 
 function Diy_Notice() {
