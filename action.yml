@@ -127,6 +127,7 @@ runs:
         if ! git clone -q --single-branch --depth=1 --branch=main https://github.com/ku891/common "${LINSHI_COMMON}"; then
             git clone --depth=1 https://github.com/ku891/common "${LINSHI_COMMON}"
         fi
+        find "${LINSHI_COMMON}" -type f \( -name '*.sh' -o -name 'common.sh' -o -name 'upgrade.sh' \) -exec sed -i 's/\r$//' {} + 2>/dev/null || true
         if [ -f "${LINSHI_COMMON}/custom/first.sh" ] && grep -qE "bash" "${LINSHI_COMMON}/custom/first.sh"; then
            chmod -R +x "${LINSHI_COMMON}"
            source "${LINSHI_COMMON}/custom/first.sh"
@@ -140,6 +141,7 @@ runs:
       run: |
         cd ${GITHUB_WORKSPACE}
         if [ -f "${COMMON_SH}" ] && grep -qE "bash" "${COMMON_SH}"; then
+           sed -i 's/\r$//' "${COMMON_SH}" 2>/dev/null || true
            chmod +x "${COMMON_SH}"
            bash $COMMON_SH Diy_menu6
         else
