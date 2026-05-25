@@ -390,11 +390,14 @@ TIME y "正在执行：自定义文件"
 cd ${HOME_PATH}
 # 运行自定义文件
 ${DIY_PT1_SH}
+./scripts/feeds update packages
 ./scripts/feeds update -a &>/dev/null
 # feeds update 会覆盖 Diy_checkout 里的 node，fileshare 需 sbwml 交叉编译 node 包
 if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
+  export HOME_PATH GITHUB_WORKSPACE
   bash "${COMPILE_PATH}/install-node-cross.sh"
 elif [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
+  export HOME_PATH GITHUB_WORKSPACE
   bash "${COMPILE_PATH}/install-node-prebuilt.sh"
 fi
 }
@@ -426,8 +429,10 @@ fi
 
 # feeds install 后再次注入交叉编译 node 包
 if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
+  export HOME_PATH GITHUB_WORKSPACE
   bash "${COMPILE_PATH}/install-node-cross.sh"
 elif [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
+  export HOME_PATH GITHUB_WORKSPACE
   bash "${COMPILE_PATH}/install-node-prebuilt.sh"
 fi
 
