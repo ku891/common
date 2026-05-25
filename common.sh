@@ -391,8 +391,10 @@ cd ${HOME_PATH}
 # 运行自定义文件
 ${DIY_PT1_SH}
 ./scripts/feeds update -a &>/dev/null
-# feeds update 会覆盖 Diy_checkout 里的 node 预编译包，fileshare 依赖 node 时需再次替换
-if [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
+# feeds update 会覆盖 Diy_checkout 里的 node，fileshare 需 sbwml 交叉编译 node 包
+if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
+  bash "${COMPILE_PATH}/install-node-cross.sh"
+elif [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
   bash "${COMPILE_PATH}/install-node-prebuilt.sh"
 fi
 }
@@ -422,8 +424,10 @@ fi
 ./scripts/feeds install -a &>/dev/null
 ./scripts/feeds install -a
 
-# feeds install 后再次替换 node（避免仍用源码版 node 编译）
-if [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
+# feeds install 后再次注入交叉编译 node 包
+if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
+  bash "${COMPILE_PATH}/install-node-cross.sh"
+elif [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
   bash "${COMPILE_PATH}/install-node-prebuilt.sh"
 fi
 
