@@ -422,8 +422,15 @@ fi
 ./scripts/feeds install -a &>/dev/null
 ./scripts/feeds install -a
 
+# feeds install 后再次替换 node（避免仍用源码版 node 编译）
+if [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
+  bash "${COMPILE_PATH}/install-node-prebuilt.sh"
+fi
+
 # 使用自定义配置文件
 [[ -f "$MYCONFIG_FILE" ]] && cp -Rf $MYCONFIG_FILE .config
+# fileshare 会拉 node 依赖，勿在 seed 里强制 CONFIG_PACKAGE_node=y（会走源码编译）
+sed -i '/^CONFIG_PACKAGE_node=y/d;/^CONFIG_PACKAGE_node-npm=y/d' .config 2>/dev/null || true
 }
 
 
