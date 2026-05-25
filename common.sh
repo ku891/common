@@ -395,9 +395,11 @@ ${DIY_PT1_SH}
 # feeds update 会覆盖 Diy_checkout 里的 node，fileshare 需 sbwml 交叉编译 node 包
 if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
   export HOME_PATH GITHUB_WORKSPACE
+  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-cross.sh" 2>/dev/null || true
   bash "${COMPILE_PATH}/install-node-cross.sh"
 elif [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
   export HOME_PATH GITHUB_WORKSPACE
+  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-prebuilt.sh" 2>/dev/null || true
   bash "${COMPILE_PATH}/install-node-prebuilt.sh"
 fi
 }
@@ -430,9 +432,11 @@ fi
 # feeds install 后再次注入交叉编译 node 包
 if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
   export HOME_PATH GITHUB_WORKSPACE
+  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-cross.sh" 2>/dev/null || true
   bash "${COMPILE_PATH}/install-node-cross.sh"
 elif [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
   export HOME_PATH GITHUB_WORKSPACE
+  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-prebuilt.sh" 2>/dev/null || true
   bash "${COMPILE_PATH}/install-node-prebuilt.sh"
 fi
 
