@@ -392,6 +392,10 @@ cd ${HOME_PATH}
 # 运行自定义文件
 ${DIY_PT1_SH}
 ./scripts/feeds update -a &>/dev/null
+# feeds update 会覆盖 Diy_checkout 里的 node 预编译包，fileshare 依赖 node 时需再次替换
+if [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
+  bash "${COMPILE_PATH}/install-node-prebuilt.sh"
+fi
 }
 
 
