@@ -392,15 +392,11 @@ cd ${HOME_PATH}
 ${DIY_PT1_SH}
 ./scripts/feeds update packages
 ./scripts/feeds update -a &>/dev/null
-# feeds update 会覆盖 Diy_checkout 里的 node，fileshare 需 sbwml 交叉编译 node 包
+# fileshare feed 就绪后 patch（24.10 不维护 feeds/lang/node）
 if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
-  export HOME_PATH GITHUB_WORKSPACE
-  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-cross.sh" 2>/dev/null || true
+  export HOME_PATH GITHUB_WORKSPACE COMPILE_PATH
+  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-cross.sh" "${COMPILE_PATH}/patch-fileshare-for-immortalwrt.sh" "${COMPILE_PATH}/extract-sbwml-node.sh" 2>/dev/null || true
   bash "${COMPILE_PATH}/install-node-cross.sh"
-elif [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
-  export HOME_PATH GITHUB_WORKSPACE
-  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-prebuilt.sh" 2>/dev/null || true
-  bash "${COMPILE_PATH}/install-node-prebuilt.sh"
 fi
 }
 
@@ -429,20 +425,16 @@ fi
 ./scripts/feeds install -a &>/dev/null
 ./scripts/feeds install -a
 
-# feeds install 后再次注入交叉编译 node 包
+# feeds install 后：24.10 由 fileshare 捆绑 sbwml node，不再编 feeds/packages/lang/node
 if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
-  export HOME_PATH GITHUB_WORKSPACE
-  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-cross.sh" 2>/dev/null || true
+  export HOME_PATH GITHUB_WORKSPACE COMPILE_PATH
+  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-cross.sh" "${COMPILE_PATH}/patch-fileshare-for-immortalwrt.sh" "${COMPILE_PATH}/extract-sbwml-node.sh" 2>/dev/null || true
   bash "${COMPILE_PATH}/install-node-cross.sh"
-elif [[ -f "${COMPILE_PATH}/install-node-prebuilt.sh" ]]; then
-  export HOME_PATH GITHUB_WORKSPACE
-  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-prebuilt.sh" 2>/dev/null || true
-  bash "${COMPILE_PATH}/install-node-prebuilt.sh"
 fi
 
 # 使用自定义配置文件
 [[ -f "$MYCONFIG_FILE" ]] && cp -Rf $MYCONFIG_FILE .config
-# fileshare 会拉 node 依赖，勿在 seed 里强制 CONFIG_PACKAGE_node=y（会走源码编译）
+# 不编译独立 node 包（fileshare 自带 /usr/bin/node）
 sed -i '/^CONFIG_PACKAGE_node=y/d;/^CONFIG_PACKAGE_node-npm=y/d' .config 2>/dev/null || true
 }
 
