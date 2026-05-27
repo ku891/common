@@ -247,9 +247,8 @@ if [[ ! -d "${HOME_PATH}/package/network/config/firewall4" ]]; then
   rm -rf ${HOME_PATH}/feeds/danshui/luci-app-homeproxy
 fi
 
-# 更新golang和node版本
+# 更新 golang 版本（不装 fileshare，不再注入 sbwml node）
 gitsvn https://github.com/sbwml/packages_lang_golang ${HOME_PATH}/feeds/packages/lang/golang
-gitsvn https://github.com/sbwml/feeds_packages_lang_node-prebuilt ${HOME_PATH}/feeds/packages/lang/node
 
 # store插件依赖
 if [[ -d "${HOME_PATH}/feeds/danshui/relevance/nas-packages/network/services" ]] && [[ ! -d "${HOME_PATH}//package/network/services/ddnsto" ]]; then
@@ -392,12 +391,6 @@ cd ${HOME_PATH}
 ${DIY_PT1_SH}
 ./scripts/feeds update packages
 ./scripts/feeds update -a &>/dev/null
-# fileshare feed 就绪后 patch（24.10 不维护 feeds/lang/node）
-if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
-  export HOME_PATH GITHUB_WORKSPACE COMPILE_PATH
-  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-cross.sh" "${COMPILE_PATH}/patch-fileshare-for-immortalwrt.sh" "${COMPILE_PATH}/extract-sbwml-node.sh" 2>/dev/null || true
-  bash "${COMPILE_PATH}/install-node-cross.sh"
-fi
 }
 
 
@@ -425,17 +418,8 @@ fi
 ./scripts/feeds install -a &>/dev/null
 ./scripts/feeds install -a
 
-# feeds install 后：24.10 由 fileshare 捆绑 sbwml node，不再编 feeds/packages/lang/node
-if [[ -f "${COMPILE_PATH}/install-node-cross.sh" ]]; then
-  export HOME_PATH GITHUB_WORKSPACE COMPILE_PATH
-  sed -i 's/\r$//' "${COMPILE_PATH}/install-node-cross.sh" "${COMPILE_PATH}/patch-fileshare-for-immortalwrt.sh" "${COMPILE_PATH}/extract-sbwml-node.sh" 2>/dev/null || true
-  bash "${COMPILE_PATH}/install-node-cross.sh"
-fi
-
 # 使用自定义配置文件
 [[ -f "$MYCONFIG_FILE" ]] && cp -Rf $MYCONFIG_FILE .config
-# 不编译独立 node 包（fileshare 自带 /usr/bin/node）
-sed -i '/^CONFIG_PACKAGE_node=y/d;/^CONFIG_PACKAGE_node-npm=y/d' .config 2>/dev/null || true
 }
 
 
