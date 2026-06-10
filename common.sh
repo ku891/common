@@ -478,9 +478,9 @@ cd ${HOME_PATH}
 source "${DIY_PT2_SH}"
 # 获取源码文件的IP
 lan="/set network.\$1.netmask/a"
-ipadd="$(grep "ipaddr:-" "${GENE_PATH}" |grep -v 'addr_offset' |grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+")"
-netmas="$(grep "netmask:-" "${GENE_PATH}" |grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+")"
-opname="$(grep "hostname=" "${GENE_PATH}" |grep -v '\$hostname' |cut -d "'" -f2)"
+ipadd="$(grep "ipaddr:-" "${GENE_PATH}" 2>/dev/null |grep -v 'addr_offset' |grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" |head -1)"
+netmas="$(grep "netmask:-" "${GENE_PATH}" 2>/dev/null |grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" |head -1)"
+opname="$(grep "hostname=" "${GENE_PATH}" 2>/dev/null |grep -v '\$hostname' |head -1 |cut -d "'" -f2)"
 if [[ -n "$(grep "set network.\${1}6.device" "${GENE_PATH}")" ]]; then
   ifnamee="uci set network.ipv6.device='@lan'"
   set_add="uci add_list firewall.@zone[0].network='ipv6'"
@@ -498,12 +498,19 @@ if [[ "${Ipv4_ipaddr}" == "0" ]] || [[ -z "${Ipv4_ipaddr}" ]]; then
 elif [[ -n "${Ipv4_ipaddr}" ]]; then
   Kernel_Pat="$(echo ${Ipv4_ipaddr} |grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+")"
   ipadd_Pat="$(echo ${ipadd} |grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+")"
-  if [[ -n "${Kernel_Pat}" ]] && [[ -n "${ipadd_Pat}" ]]; then
-     sed -i "s/${ipadd}/${Ipv4_ipaddr}/g" "${GENE_PATH}"
-     echo "openwrt后台IP[${Ipv4_ipaddr}]修改完成"
-   else
-     TIME r "因IP获取有错误，后台IP更换不成功，请检查IP是否填写正确，如果填写正确，那就是获取不了源码内的IP了"
-   fi
+  if [[ -n "${Kernel_Pat}" ]]; then
+    if grep -q 'ipaddr:-"' "${GENE_PATH}" 2>/dev/null; then
+      sed -i -E "s|ipaddr:-\"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\"|ipaddr:-\"${Kernel_Pat}\"|g" "${GENE_PATH}"
+      echo "openwrt后台IP[${Ipv4_ipaddr}]修改完成"
+    elif [[ -n "${ipadd_Pat}" ]]; then
+      sed -i "s/${ipadd_Pat}/${Kernel_Pat}/g" "${GENE_PATH}"
+      echo "openwrt后台IP[${Ipv4_ipaddr}]修改完成"
+    else
+      TIME r "因IP获取有错误，后台IP更换不成功，请检查IP是否填写正确，如果填写正确，那就是获取不了源码内的IP了"
+    fi
+  else
+    TIME r "因IP获取有错误，后台IP更换不成功，请检查IP是否填写正确，如果填写正确，那就是获取不了源码内的IP了"
+  fi
 fi
 
 if [[ "${Netmask_netm}" == "0" ]] || [[ -z "${Netmask_netm}" ]]; then
@@ -511,11 +518,18 @@ if [[ "${Netmask_netm}" == "0" ]] || [[ -z "${Netmask_netm}" ]]; then
 elif [[ -n "${Netmask_netm}" ]]; then
   Kernel_netm="$(echo ${Netmask_netm} |grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+")"
   ipadd_mas="$(echo ${netmas} |grep -Eo "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+")"
-  if [[ -n "${Kernel_netm}" ]] && [[ -n "${ipadd_mas}" ]]; then
-     sed -i "s/${netmas}/${Netmask_netm}/g" "${GENE_PATH}"
-     echo "子网掩码[${Netmask_netm}]修改完成"
-   else
-     TIME r "因子网掩码获取有错误，子网掩码设置失败，请检查IP是否填写正确，如果填写正确，那就是获取不了源码内的IP了"
+  if [[ -n "${Kernel_netm}" ]]; then
+    if grep -q 'netmask:-"' "${GENE_PATH}" 2>/dev/null; then
+      sed -i -E "s|netmask:-\"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\"|netmask:-\"${Kernel_netm}\"|g" "${GENE_PATH}"
+      echo "子网掩码[${Netmask_netm}]修改完成"
+    elif [[ -n "${ipadd_mas}" ]]; then
+      sed -i "s/${ipadd_mas}/${Kernel_netm}/g" "${GENE_PATH}"
+      echo "子网掩码[${Netmask_netm}]修改完成"
+    else
+      TIME r "因子网掩码获取有错误，子网掩码设置失败，请检查IP是否填写正确，如果填写正确，那就是获取不了源码内的IP了"
+    fi
+  else
+    TIME r "因子网掩码获取有错误，子网掩码设置失败，请检查IP是否填写正确，如果填写正确，那就是获取不了源码内的IP了"
   fi
 fi
 
